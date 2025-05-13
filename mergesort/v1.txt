@@ -1,0 +1,111 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+    char codigo[20];
+    char cnpj[20];
+    int peso;
+} Container;
+
+void lerConteineres(FILE *arquivo, Container **containers, int *quantidade) {
+    fscanf(arquivo, "%d", quantidade);
+    *containers = (Container *)malloc(*quantidade * sizeof(Container));
+
+    for (int i = 0; i < *quantidade; i++) {
+        fscanf(arquivo, "%s %s %d", (*containers)[i].codigo, (*containers)[i].cnpj, &(*containers)[i].peso);
+    }
+}
+
+void verificarDivergencias(Container *todosContainers, int totalContainers, Container *containersSelecionados, int totalSelecionados, const char *arquivoSaida) {
+    FILE *saida = fopen(arquivoSaida, "w");
+    if (saida == NULL) {
+        printf("Erro ao criar o arquivo de saída.\n");
+        return;
+    }
+
+    char codigoMaiorDiferenca[20][20]; // Armazena códigos de containers com maior diferença
+    int maiorDiferencaPercentual = 0;
+    int diferencaPeso[20]; // Armazena as diferenças de peso correspondentes
+    int count = 0; // Contador para quantos containers tem a maior diferença
+    int encontrouDivergencia = 0;
+
+    for (int i = 0; i < totalContainers; i++) {
+        for (int j = 0; j < totalSelecionados; j++) {
+            // Comparar códigos
+            if (strcmp(todosContainers[i].codigo, containersSelecionados[j].codigo) == 0) {
+                // Verificar divergência de CNPJ
+                if (strcmp(todosContainers[i].cnpj, containersSelecionados[j].cnpj) != 0) {
+                    fprintf(saida, "%s: %s<->%s\n", todosContainers[i].codigo, todosContainers[i].cnpj, containersSelecionados[j].cnpj);
+                    encontrouDivergencia = 1;
+                } else {
+                    // Calcula a diferença percentual
+                    float diferenca = abs(todosContainers[i].peso - containersSelecionados[j].peso);
+                    float media = (todosContainers[i].peso + containersSelecionados[j].peso) / 2.0;
+                    int diferencaPercentual = (int)((diferenca / media) * 100.0 + 0.5); // Arredonda para o inteiro mais próximo
+
+                    // Verifica se é a maior diferença encontrada
+                    if (diferencaPercentual > maiorDiferencaPercentual) {
+                        maiorDiferencaPercentual = diferencaPercentual;
+                        // Atualiza o array para armazenar o novo maior valor
+                        strcpy(codigoMaiorDiferenca[0], todosContainers[i].codigo);
+                        diferencaPeso[0] = (int)diferenca;
+                        count = 1; // Resetando o contador para 1 (só esse agora)
+                    }
+                    else if (diferencaPercentual == maiorDiferencaPercentual) {
+                        // Se a diferença percentual é igual à maior encontrada, adiciona esse container
+                        strcpy(codigoMaiorDiferenca[count], todosContainers[i].codigo);
+                        diferencaPeso[count] = (int)diferenca;
+                        count++; // Incrementa o contador
+                    }
+                }
+            
+            }     
+        }
+    }
+
+    if (count > 0) {
+        // Exibe todos os containers com a maior diferença
+        for (int i = 0; i < count; i++) {
+            fprintf(saida, "%s: %dkg(%d%%)\n", codigoMaiorDiferenca[i], diferencaPeso[i], maiorDiferencaPercentual);
+        }
+        } else {
+            fprintf(saida, "Nenhuma diferença de peso encontrada.\n");
+        }  
+
+    if (!encontrouDivergencia) {
+        fprintf(saida, "Nenhuma divergência encontrada.\n");
+    }
+
+    fclose(saida);
+    printf("Arquivo de saída '%s' gerado com sucesso.\n", arquivoSaida);
+}
+
+int main(int argc, char* argv[]) {
+    FILE *arquivo = fopen(argv[1], "r");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo.\n");
+        return 1;
+    }
+
+    Container *todosContainers = NULL;
+    int totalContainers = 0;
+
+    Container *containersSelecionados = NULL;
+    int totalSelecionados = 0;
+
+    // Leitura dos dados do arquivo
+    lerConteineres(arquivo, &todosContainers, &totalContainers);
+    lerConteineres(arquivo, &containersSelecionados, &totalSelecionados);
+
+    fclose(arquivo);
+
+    // Verificação de divergências e geração da saída em um arquivo
+    verificarDivergencias(todosContainers, totalContainers, containersSelecionados, totalSelecionados, argv[2]);
+
+    // Liberação da memória alocada
+    free(todosContainers);
+    free(containersSelecionados);
+
+    return 0;
+}

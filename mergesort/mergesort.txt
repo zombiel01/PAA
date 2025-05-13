@@ -1,0 +1,31 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+
+void copiar(int32_t* destino, int32_t* origem, int32_t tamanho) {
+    for (int32_t i = 0; i < tamanho; i++) {
+        destino[i] = origem[i];
+    }
+}
+
+void intercalar(int32_t* S, int32_t* E, int32_t i, int32_t m, int32_t j) {
+    int32_t i1 = i, i2 = m + 1, k = i;
+
+    while(i1 <= m && i2 <= j) {
+        if(E[i1] <= E[i2]) S[k++] = E[i1++];
+        else S[k++] = E[i2++];
+    }
+
+    if(i1 > m) copiar(&S[k], &E[i2], j - i2 + 1);
+    else copiar(&S[k], &E[i1], m - i1 + 1);
+    copiar(&E[i], &S[i], j - i + 1);
+}
+
+void mergesort(int32_t* S, int32_t* E, int32_t i, int32_t j) {   
+    if (i < j) {
+        int32_t m = i + (j - i) / 2;
+        mergesort(S, E, i, m);
+        mergesort(S, E, m + 1, j);
+        intercalar(S, E, i, m, j);
+    }
+}
